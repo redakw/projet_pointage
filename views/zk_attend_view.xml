@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_zk_machine_attendance_tree" model="ir.ui.view">
+        <field name="name">zk.machine.attendance.tree</field>
+        <field name="model">zk.machine.attendance</field>
+        <field name="arch" type="xml" >
+            <tree>
+                <field name="department_id"/>
+				<field name="employee_id"/>
+                <!-- <field name="punch_type"/> -->
+                <field name="punching_time"/>
+                <!-- <field name="attendance_type"/> -->
+                <!-- <field name="date"/> -->
+                <!-- <field name="intt"/> -->
+                <!-- <field name="bbol"/> -->
+            </tree>
+        </field>
+    </record>
+
+    <record id="zk_machine_attendance_action" model="ir.actions.act_window">
+        <field name="name">zk_machine_attendance</field>
+        <field name="res_model">zk.machine.attendance</field>
+        <field name="view_mode">tree</field>
+    </record>
+
+
+    <menuitem id="menu_zk_machine_attendance_view" name="Presences" action="zk_machine_attendance_action" parent="hr_attendance.menu_hr_attendance_manage_attendances" sequence="30"  />
+</odoo>
+
