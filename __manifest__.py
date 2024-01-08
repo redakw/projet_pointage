@@ -30,13 +30,14 @@
     'live_test_url': 'https://youtu.be/RHSHHU7nzTo',
     'company': 'Cybrosys Techno Solutions',
     'website': "http://www.openhrms.com",
-    'depends': ['base_setup', 'hr_attendance'],
+    'depends': ['hr_attendance','base_setup'],
     'data': [
         'security/ir.model.access.csv',
         'views/zk_machine_view.xml',
         'views/zk_attend_view.xml',
         'views/zk_machine_attendance_view.xml',
-        'data/download_data.xml'
+        'data/download_data.xml',
+        'data/app_absence.xml'
 
 
     ],
