@@ -125,55 +125,78 @@ class ZkMachine(models.Model):
 
 
     def download_attendance(self):
-        zk_attendance_records = self.env['zk.machine.attendance'].search([])#affectation d objet  zk.machine.attendance
+        _logger.info("++++++++++++Cron Executed++++++++++++++++++++++")
+        zk_attendance = self.env['zk.machine.attendance']
+        att_obj = self.env['hr.attendance']
+        for info in self:
+            machine_ip = info.name
+            zk_port = info.port_no
+            timeout = 15
+            try:
+                zk = ZK(machine_ip, port=zk_port, timeout=timeout, password=0, force_udp=False, ommit_ping=False)
+            except NameError:
+                raise UserError(_("Pyzk module not Found. Please install it with 'pip3 install pyzk'."))
+            conn = self.device_connect(zk)
+            if conn:
+                # conn.disable_device() #Device Cannot be used during this time.
+                try:
+                    user = conn.get_users()
+                except:
+                    user = False
+                try:
+                    attendance = conn.get_attendance()
+                except:
+                    attendance = False
+                if attendance:
+                    for each in attendance:
+                        atten_time = each.timestamp
+                        atten_time = datetime.strptime(atten_time.strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
+                        local_tz = pytz.timezone(
+                            self.env.user.partner_id.tz or 'GMT')
+                        local_dt = local_tz.localize(atten_time, is_dst=None)
+                        utc_dt = local_dt.astimezone(pytz.utc)
+                        utc_dt = utc_dt.strftime("%Y-%m-%d %H:%M:%S")
+                        atten_time = datetime.strptime(
+                            utc_dt, "%Y-%m-%d %H:%M:%S")
+                        atten_time = fields.Datetime.to_string(atten_time)
+                        if user:
+                            for uid in user:
+                                if uid.user_id == each.user_id:
+                                    get_user_id = self.env['hr.employee'].search(
+                                        [('device_id', '=', each.user_id)], limit=1)
+                                    if get_user_id:
+                                        duplicate_atten_ids = zk_attendance.search(
+                                            [('device_id', '=', each.user_id), ('punching_time', '=', atten_time)])
+                                        if duplicate_atten_ids:
+                                            continue
+                                        else:
+                                            zk_attendance.create({'employee_id': get_user_id.id,
+                                                                  'device_id': each.user_id,
+                                                                  # 'attendance_type': '1',
+                                                                  # 'punch_type': str(each.punch),
+                                                                  'punching_time': atten_time,
+                                                                  'address_id': info.address_id.id})
+                                    else:
+                                        employee = self.env['hr.employee'].create(
+                                            {'device_id': each.user_id, 'name': uid.name})
+                                        zk_attendance.create({'employee_id': employee.id,
+                                                              'device_id': each.user_id,
+                                                              'attendance_type': '1',
+                                                              # 'punch_type': str(each.punch),
+                                                              'punching_time': atten_time,
+                                                              'address_id': info.address_id.id})
+                                        att_obj.create({'employee_id': employee.id,
+                                                        'check_in': atten_time})
+                                else:
+                                    pass
 
-        for employee_id in zk_attendance_records.mapped('employee_id'): # boucle sur zk_attendance_records et amene les employés .mapped(amane les employés une seul fois uniqueùent mem s'il se repete plusieurs fois dans zk_attendance_records)
-            employee_attendances = zk_attendance_records.filtered(lambda e: e.employee_id == employee_id)# ici j ai amené le pointage de chaque employee
-            dates = set(attendance.punching_time.date() for attendance in employee_attendances)
-
-            for date in dates:
-                date_attendances = employee_attendances.filtered(lambda r: r.punching_time.date() == date)
-
-                check_in = min(date_attendances.mapped('punching_time'))
-                check_out = max(date_attendances.mapped('punching_time'))
-
-                # Check if check_in and check_out are on different dates
-                if check_in.date() != check_out.date():
-                    # Create two separate records for night shift
-                    night_shift_check_out = datetime.combine(check_in.date() + timedelta(days=1), datetime.min.time())
-
-                    hr_attendance_record_night_shift = self.env['hr.attendance'].create({
-                        'employee_id': employee_id.id,
-                        'check_in': check_in,
-                        'check_out': night_shift_check_out,
-                    })
-
-                    hr_attendance_record_day_shift = self.env['hr.attendance'].create({
-                        'employee_id': employee_id.id,
-                        'check_in': datetime.combine(check_out.date(), datetime.min.time()),
-                        'check_out': check_out,
-                    })
+                    # zk.enableDevice()
+                    conn.disconnect
+                    return True
                 else:
-                    hr_attendance_record = self.env['hr.attendance'].search([
-                        ('employee_id', '=', employee_id.id),
-                        ('check_in', '<=', check_out),
-                        ('check_out', '>=', check_in),
-                    ])
-
-                    if not hr_attendance_record:
-                        hr_attendance_record = self.env['hr.attendance'].create({
-                            'employee_id': employee_id.id,
-                            'check_in': check_in,
-                            'check_out': check_out,
-                        })
-                    else:
-                        hr_attendance_record.write({
-                            'check_in': check_in,
-                            'check_out': check_out,
-                        })
-
-
-
+                    raise UserError(_('Unable to get the attendance log, please try again later.'))
+            else:
+                raise UserError(_('Unable to connect, please check the parameters and network connections.'))
 
 
 
