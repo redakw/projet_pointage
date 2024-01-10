@@ -123,7 +123,6 @@ class ZkMachine(models.Model):
         for machine in machines:
             machine.download_attendance()
 
-
     def download_attendance(self):
         _logger.info("++++++++++++Cron Executed++++++++++++++++++++++")
         zk_attendance = self.env['zk.machine.attendance']
@@ -198,7 +197,54 @@ class ZkMachine(models.Model):
             else:
                 raise UserError(_('Unable to connect, please check the parameters and network connections.'))
 
+    def cron_calculate_checkin_checkout(self):
 
+        zk_attendance_records = self.env['zk.machine.attendance'].search([])
 
+        for employee_id in zk_attendance_records.mapped('employee_id'):
+            employee_attendances = zk_attendance_records.filtered(lambda r: r.employee_id == employee_id)
+
+            dates = set(attendance.punching_time.date() for attendance in employee_attendances)
+
+            for date in dates:
+                date_attendances = employee_attendances.filtered(lambda r: r.punching_time.date() == date)
+
+                check_in = min(date_attendances.mapped('punching_time'))
+                check_out = max(date_attendances.mapped('punching_time'))
+
+                # Check if check_in and check_out are on different dates
+                if check_in.date() != check_out.date():
+                    # Create two separate records for night shift
+                    night_shift_check_out = datetime.combine(check_in.date() + timedelta(days=1), datetime.min.time())
+
+                    hr_attendance_record_night_shift = self.env['hr.attendance'].create({
+                        'employee_id': employee_id.id,
+                        'check_in': check_in,
+                        'check_out': night_shift_check_out,
+                    })
+
+                    hr_attendance_record_day_shift = self.env['hr.attendance'].create({
+                        'employee_id': employee_id.id,
+                        'check_in': datetime.combine(check_out.date(), datetime.min.time()),
+                        'check_out': check_out,
+                    })
+                else:
+                    hr_attendance_record = self.env['hr.attendance'].search([
+                        ('employee_id', '=', employee_id.id),
+                        ('check_in', '<=', check_out),
+                        ('check_out', '>=', check_in),
+                    ])
+
+                    if not hr_attendance_record:
+                        hr_attendance_record = self.env['hr.attendance'].create({
+                            'employee_id': employee_id.id,
+                            'check_in': check_in,
+                            'check_out': check_out,
+                        })
+                    else:
+                        hr_attendance_record.write({
+                            'check_in': check_in,
+                            'check_out': check_out,
+                        })
 
 

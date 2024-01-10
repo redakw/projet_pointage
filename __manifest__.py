@@ -37,6 +37,7 @@
         'views/zk_attend_view.xml',
         'views/zk_machine_attendance_view.xml',
         'data/download_data.xml',
+        'data/calculate_checkin_checkout.xml',
         'data/app_absence.xml'
 
 
