@@ -201,8 +201,8 @@ class ZkMachine(models.Model):
 
         zk_attendance_records = self.env['zk.machine.attendance'].search([])
 
-        for employee_id in zk_attendance_records.mapped('employee_id'):
-            employee_attendances = zk_attendance_records.filtered(lambda r: r.employee_id == employee_id)
+        for employee_id in zk_attendance_records.mapped('employee_id'):# amene l'employee une seul fois meme si'il se repete dans l'objet
+            employee_attendances = zk_attendance_records.filtered(lambda r: r.employee_id == employee_id) #id == employee_id
 
             dates = set(attendance.punching_time.date() for attendance in employee_attendances)
 
@@ -246,5 +246,3 @@ class ZkMachine(models.Model):
                             'check_in': check_in,
                             'check_out': check_out,
                         })
-
-

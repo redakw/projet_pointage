@@ -40,7 +40,6 @@
         'data/calculate_checkin_checkout.xml',
         'data/app_absence.xml'
 
-
     ],
     'images': ['static/description/banner.png'],
     'license': 'AGPL-3',
@@ -48,3 +47,13 @@
     'auto_install': False,
     'application': False,
 }
+
+
+
+
+
+
+
+
+
+
